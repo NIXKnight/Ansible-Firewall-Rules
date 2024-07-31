@@ -1,0 +1,12 @@
+dependencies: []
+galaxy_info:
+  author: Saad Ali
+  description: Setup NFTables based firewall rules on a Linux server.
+  min_ansible_version: 8.1
+  platforms:
+  - name: Debian
+    versions:
+      - bookworm
+  galaxy_tags:
+    - nftables
+    - firewall
