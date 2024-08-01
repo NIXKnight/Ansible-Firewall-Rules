@@ -1,0 +1,17 @@
+[Unit]
+Description=NFTables Firewall Rules
+DefaultDependencies=no
+Wants=network-pre.target systemd-modules-load.service local-fs.target
+Before=network-pre.target shutdown.target
+After=systemd-modules-load.service local-fs.target
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/nftables-rules.sh
+ExecStop=/usr/sbin/nft flush ruleset
+ExecReload=/usr/local/bin/nftables-rules.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

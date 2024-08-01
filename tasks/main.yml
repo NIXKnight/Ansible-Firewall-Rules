@@ -1,2 +1,40 @@
 ---
 # tasks file for Ansible-Firewall-Rules
+- name: Install NFTables
+  ansible.builtin.apt:
+    name: "nftables"
+    state: present
+    update_cache: yes
+
+- name: Check if Systemd Service for Firewall Exists
+  ansible.builtin.stat:
+    path: "/etc/systemd/system/firewall.service"
+  register: firewall_systemd_service_file
+
+- name: Generate NFTables Rules Shell Script
+  ansible.builtin.template:
+    src: "templates/nftables-rules.sh.j2"
+    dest: "/usr/local/bin/nftables-rules.sh"
+    mode: 0755
+  register: generate_nftables_rules_shell_script
+
+- name: Copy Systemd Service File for Firewall
+  ansible.builtin.copy:
+    src: "files/etc/systemd/system/firewall.service"
+    dest: "/etc/systemd/system/firewall.service"
+  register: copy_firewall_systemd_service_file
+
+- name: Start Systemd Firewall Service
+  ansible.builtin.systemd_service:
+    name: "{{ DOCKER_COMPOSE_SERVICE_NAME }}"
+    state: started
+    daemon_reload: true
+  register: firewall_systemd_service
+  when: not firewall_systemd_service_file.stat.exists
+
+- name: Restart Systemd Firewall Service
+  ansible.builtin.systemd_service:
+    name: "{{ DOCKER_COMPOSE_SERVICE_NAME }}"
+    state: restarted
+    daemon_reload: true
+  when: (firewall_systemd_service_file.stat.exists and copy_firewall_systemd_service_file.changed) or (firewall_systemd_service_file.stat.exists and generate_nftables_rules_shell_script.changed)

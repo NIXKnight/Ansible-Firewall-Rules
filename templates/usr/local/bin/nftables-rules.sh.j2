@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# {{ ansible_managed }}
+
+set -x
+
+# Flush existing rules and delete custom chains
+nft flush ruleset
+
+# Create tables for IPv4 and IPv6
+nft add table inet filter
+
+# Create chains
+nft add chain inet filter INPUT { type filter hook input priority 0 \; policy drop \; }
+nft add chain inet filter OUTPUT { type filter hook output priority 0 \; policy accept \; }
+
+# Allow localhost
+nft add rule inet filter INPUT iif lo accept
+nft add rule inet filter OUTPUT oif lo accept
+
+# Drop invalid packets
+nft add rule inet filter INPUT ct state invalid drop
+
+# Allow established and related connections
+nft add rule inet filter INPUT ct state established,related accept
+
+# Allow SSH access
+nft add rule inet filter INPUT tcp dport {{ FIREWALL_SSH_PORT }} accept
+
+{% if FIREWALL_OPEN_PORTS_ENABLED %}
+# Open ports
+{% for PORT_INFO in FIREWALL_OPEN_PORTS %}
+nft add rule inet filter INPUT iif {{ FIREWALL_PUBLIC_INTERFACE }} {{ PORT_INFO.PROTOCOL }} dport {{ PORT_INFO.PORT }} accept
+{% endfor %}
+{% endif %}
+
+# Allow link-local addresses for essential traffic on WAN interface
+nft add rule inet filter INPUT iif {{ FIREWALL_PUBLIC_INTERFACE }} ip6 saddr fe80::/10 icmpv6 type { echo-request, echo-reply, nd-neighbor-solicit, nd-neighbor-advert, nd-router-solicit, nd-router-advert, mld-listener-query } accept
+
+{% for RULES in FIREWALL_ADDITIONAL_RULES %}
+{{ RULES }}
+{% endfor %}
